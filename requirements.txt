@@ -1,0 +1,15 @@
+flask>=3.0.0
+sentence-transformers>=5.2.0
+networkx>=3.2
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.26.0
+PyMuPDF>=1.24.0
+requests>=2.31.0
+tqdm>=4.66.0
+scikit-learn>=1.4.0
+matplotlib>=3.8.0
+seaborn>=0.13.0
+plotly>=5.18.0
+pandas>=2.2.0
+python-dotenv>=1.0.0

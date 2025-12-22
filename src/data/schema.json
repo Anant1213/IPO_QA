@@ -1,0 +1,433 @@
+{
+    "schema_version": "1.0",
+    "description": "Comprehensive Knowledge Graph Schema for IPO Documents",
+    "entities": {
+        "COMPANY": {
+            "description": "The IPO company, subsidiaries, group companies, competitors",
+            "attributes": [
+                "name",
+                "cin",
+                "registration_date",
+                "registered_office",
+                "type"
+            ]
+        },
+        "PERSON": {
+            "description": "Promoters, directors, key personnel, auditors, legal advisors",
+            "attributes": [
+                "name",
+                "din",
+                "role",
+                "age",
+                "qualifications"
+            ]
+        },
+        "FINANCIAL_METRIC": {
+            "description": "Revenue, profit, loss, assets, liabilities, valuation figures",
+            "attributes": [
+                "metric_name",
+                "value",
+                "currency",
+                "year",
+                "quarter"
+            ]
+        },
+        "RISK_FACTOR": {
+            "description": "Risk factors identified in the IPO document",
+            "attributes": [
+                "risk_type",
+                "severity",
+                "description",
+                "mitigation"
+            ]
+        },
+        "PRODUCT_SERVICE": {
+            "description": "Products or services offered by the company",
+            "attributes": [
+                "name",
+                "category",
+                "description"
+            ]
+        },
+        "MARKET_SEGMENT": {
+            "description": "Market segments, geographies, industries",
+            "attributes": [
+                "name",
+                "size",
+                "growth_rate",
+                "geography"
+            ]
+        },
+        "CUSTOMER": {
+            "description": "Major customers or customer segments",
+            "attributes": [
+                "name",
+                "revenue_contribution",
+                "type"
+            ]
+        },
+        "SUPPLIER_VENDOR": {
+            "description": "Key suppliers and vendors",
+            "attributes": [
+                "name",
+                "supply_type",
+                "dependency_level"
+            ]
+        },
+        "PARTNER": {
+            "description": "Business partners, JV partners",
+            "attributes": [
+                "name",
+                "partnership_type",
+                "start_date"
+            ]
+        },
+        "COMPETITOR": {
+            "description": "Competing companies",
+            "attributes": [
+                "name",
+                "market_share",
+                "competitive_advantage"
+            ]
+        },
+        "SHAREHOLDER": {
+            "description": "Shareholders including institutional investors",
+            "attributes": [
+                "name",
+                "shareholding_percent",
+                "type"
+            ]
+        },
+        "IPO_DETAIL": {
+            "description": "IPO specific details like price band, lot size, dates",
+            "attributes": [
+                "price_band",
+                "lot_size",
+                "opening_date",
+                "closing_date",
+                "offer_size"
+            ]
+        },
+        "USE_OF_PROCEEDS": {
+            "description": "How IPO proceeds will be utilized",
+            "attributes": [
+                "purpose",
+                "amount",
+                "priority"
+            ]
+        },
+        "LEAD_MANAGER": {
+            "description": "Book running lead managers, underwriters",
+            "attributes": [
+                "name",
+                "role",
+                "registration_no"
+            ]
+        },
+        "LITIGATION": {
+            "description": "Legal cases, disputes",
+            "attributes": [
+                "case_type",
+                "amount",
+                "status",
+                "parties"
+            ]
+        },
+        "REGULATORY_BODY": {
+            "description": "SEBI, RBI, IRDAI, etc.",
+            "attributes": [
+                "name",
+                "jurisdiction"
+            ]
+        },
+        "COMPLIANCE": {
+            "description": "Regulatory requirements and compliances",
+            "attributes": [
+                "regulation_name",
+                "compliance_status"
+            ]
+        },
+        "ASSET": {
+            "description": "Tangible and intangible assets",
+            "attributes": [
+                "asset_type",
+                "value",
+                "location"
+            ]
+        },
+        "LIABILITY": {
+            "description": "Debts, obligations, contingent liabilities",
+            "attributes": [
+                "liability_type",
+                "amount",
+                "maturity"
+            ]
+        },
+        "FACILITY": {
+            "description": "Manufacturing plants, offices, R&D centers",
+            "attributes": [
+                "facility_type",
+                "location",
+                "capacity"
+            ]
+        }
+    },
+    "relationships": {
+        "IS_PROMOTER_OF": {
+            "source": "PERSON",
+            "target": "COMPANY",
+            "attributes": [
+                "stake_percent",
+                "since_date"
+            ]
+        },
+        "IS_DIRECTOR_OF": {
+            "source": "PERSON",
+            "target": "COMPANY",
+            "attributes": [
+                "director_type",
+                "appointment_date"
+            ]
+        },
+        "IS_CEO_OF": {
+            "source": "PERSON",
+            "target": "COMPANY",
+            "attributes": [
+                "appointment_date"
+            ]
+        },
+        "IS_CFO_OF": {
+            "source": "PERSON",
+            "target": "COMPANY",
+            "attributes": [
+                "appointment_date"
+            ]
+        },
+        "OWNS_STAKE": {
+            "source": [
+                "PERSON",
+                "COMPANY",
+                "SHAREHOLDER"
+            ],
+            "target": "COMPANY",
+            "attributes": [
+                "percentage",
+                "type",
+                "acquisition_date"
+            ]
+        },
+        "IS_SUBSIDIARY_OF": {
+            "source": "COMPANY",
+            "target": "COMPANY",
+            "attributes": [
+                "ownership_percent"
+            ]
+        },
+        "HAS_GROUP_COMPANY": {
+            "source": "COMPANY",
+            "target": "COMPANY",
+            "attributes": [
+                "relationship_type"
+            ]
+        },
+        "HAS_REVENUE": {
+            "source": "COMPANY",
+            "target": "FINANCIAL_METRIC",
+            "attributes": [
+                "fiscal_year",
+                "quarter"
+            ]
+        },
+        "HAS_PROFIT": {
+            "source": "COMPANY",
+            "target": "FINANCIAL_METRIC",
+            "attributes": [
+                "fiscal_year",
+                "metric_type"
+            ]
+        },
+        "HAS_LOSS": {
+            "source": "COMPANY",
+            "target": "FINANCIAL_METRIC",
+            "attributes": [
+                "fiscal_year"
+            ]
+        },
+        "HAS_ASSET": {
+            "source": "COMPANY",
+            "target": "ASSET",
+            "attributes": [
+                "acquisition_date",
+                "valuation"
+            ]
+        },
+        "HAS_LIABILITY": {
+            "source": "COMPANY",
+            "target": "LIABILITY",
+            "attributes": [
+                "incurred_date",
+                "maturity_date"
+            ]
+        },
+        "VALUED_AT": {
+            "source": "COMPANY",
+            "target": "FINANCIAL_METRIC",
+            "attributes": [
+                "valuation_date",
+                "method"
+            ]
+        },
+        "REVENUE_FROM": {
+            "source": "COMPANY",
+            "target": [
+                "CUSTOMER",
+                "MARKET_SEGMENT"
+            ],
+            "attributes": [
+                "amount",
+                "percentage",
+                "fiscal_year"
+            ]
+        },
+        "OFFERS_PRODUCT": {
+            "source": "COMPANY",
+            "target": "PRODUCT_SERVICE",
+            "attributes": [
+                "launch_date"
+            ]
+        },
+        "OPERATES_IN": {
+            "source": "COMPANY",
+            "target": "MARKET_SEGMENT",
+            "attributes": [
+                "market_share",
+                "entry_date"
+            ]
+        },
+        "COMPETES_WITH": {
+            "source": "COMPANY",
+            "target": "COMPETITOR",
+            "attributes": [
+                "competitive_factor"
+            ]
+        },
+        "SUPPLIES_TO": {
+            "source": "SUPPLIER_VENDOR",
+            "target": "COMPANY",
+            "attributes": [
+                "supply_type",
+                "contract_value"
+            ]
+        },
+        "BUYS_FROM": {
+            "source": "COMPANY",
+            "target": "SUPPLIER_VENDOR",
+            "attributes": [
+                "purchase_amount",
+                "dependency"
+            ]
+        },
+        "PARTNERED_WITH": {
+            "source": "COMPANY",
+            "target": "PARTNER",
+            "attributes": [
+                "partnership_type",
+                "start_date"
+            ]
+        },
+        "FACES_RISK": {
+            "source": "COMPANY",
+            "target": "RISK_FACTOR",
+            "attributes": [
+                "severity",
+                "likelihood"
+            ]
+        },
+        "HAS_LITIGATION": {
+            "source": [
+                "PERSON",
+                "COMPANY"
+            ],
+            "target": "LITIGATION",
+            "attributes": [
+                "role",
+                "amount",
+                "status"
+            ]
+        },
+        "REGULATED_BY": {
+            "source": "COMPANY",
+            "target": "REGULATORY_BODY",
+            "attributes": [
+                "regulation_type"
+            ]
+        },
+        "MUST_COMPLY_WITH": {
+            "source": "COMPANY",
+            "target": "COMPLIANCE",
+            "attributes": [
+                "deadline",
+                "status"
+            ]
+        },
+        "PROCEEDS_FOR": {
+            "source": "IPO_DETAIL",
+            "target": "USE_OF_PROCEEDS",
+            "attributes": [
+                "allocated_amount"
+            ]
+        },
+        "MANAGED_BY": {
+            "source": "IPO_DETAIL",
+            "target": "LEAD_MANAGER",
+            "attributes": [
+                "role_type"
+            ]
+        },
+        "ALSO_DIRECTOR_OF": {
+            "source": "PERSON",
+            "target": "COMPANY",
+            "attributes": [
+                "director_type",
+                "other_companies"
+            ]
+        },
+        "RELATED_TO": {
+            "source": "PERSON",
+            "target": "PERSON",
+            "attributes": [
+                "relationship_type"
+            ]
+        },
+        "HAS_FACILITY": {
+            "source": "COMPANY",
+            "target": "FACILITY",
+            "attributes": [
+                "ownership_type"
+            ]
+        },
+        "AUDITED_BY": {
+            "source": "COMPANY",
+            "target": "PERSON",
+            "attributes": [
+                "audit_year",
+                "audit_type"
+            ]
+        },
+        "SERVED_BY": {
+            "source": "COMPANY",
+            "target": "PERSON",
+            "attributes": [
+                "service_type",
+                "engagement_date"
+            ]
+        }
+    },
+    "extraction_rules": {
+        "context_window": 3,
+        "min_confidence": 0.7,
+        "entity_disambiguation": true,
+        "temporal_extraction": true,
+        "numerical_normalization": true
+    }
+}

@@ -1,0 +1,52 @@
+[
+    {
+        "id": "Q1",
+        "question": "Describe the Offer structure (Fresh Issue vs Offer for Sale). Then list all Selling Shareholders under OFS and compute the total OFS shares. Finally, verify whether your computed OFS total matches the OFS total disclosed in the DRHP.",
+        "expected_answer": "Offer Structure: Fresh Issue + OFS. Selling Shareholders: Yashish Dahiya, Alok Bansal, etc. Total OFS: <sum>. Validation: MATCH/MISMATCH."
+    },
+    {
+        "id": "Q2",
+        "question": "Who are the Promoters of PB Fintech, and what are their direct and indirect ownership/control paths to the Company? Provide each path as a node-chain (entity -> relation -> entity), including any intermediate holding entities.",
+        "expected_answer": "Promoters: Yashish Dahiya, Alok Bansal. Paths: Promoter -> holds_shares -> PB Fintech."
+    },
+    {
+        "id": "Q3",
+        "question": "List the Material Subsidiaries and prove they are material using the DRHP. For each, provide its business line and relationship path from PB Fintech.",
+        "expected_answer": "Material Subsidiaries: Policybazaar, Paisabazaar. Path: PB Fintech -> has_subsidiary -> <Sub>. Business: Insurance/Credit."
+    },
+    {
+        "id": "Q4",
+        "question": "Explain what 'Material Subsidiaries' means and which entities fall under it. Then show where the term is used elsewhere in the document (at least 2 usage locations).",
+        "expected_answer": "Definition: Policybazaar & Paisabazaar. Usage: Section X, Page Y."
+    },
+    {
+        "id": "Q5",
+        "question": "Construct the subsidiary network for PB Fintech: list all subsidiaries and step-down subsidiaries as a hierarchy. Include each entity's former name (if any) and the relationship type.",
+        "expected_answer": "Tree: PB Fintech -> Policybazaar -> ... Edges: has_subsidiary. Aliases included."
+    },
+    {
+        "id": "Q6",
+        "question": "Return the definitions for 'ESOP – 2014', 'ESOP - 2014', and 'ESOP 2014'. Explain whether the KG treats them as the same term or separate terms.",
+        "expected_answer": "Canonical: ESOP – 2014. Aliases normalized: yes."
+    },
+    {
+        "id": "Q7",
+        "question": "List all regulators referenced in the DRHP and map each to (i) what they regulate and (ii) which PB Fintech entity/process is impacted. Provide the mapping as Regulator -> Scope -> Entity/Process -> Evidence.",
+        "expected_answer": "SEBI -> Securities -> IPO. IRDAI -> Insurance -> Policybazaar."
+    },
+    {
+        "id": "Q8",
+        "question": "Create a role graph showing: Founders, Promoters, Independent Directors, Statutory Auditors, and Registrar of Companies. Output as Role -> Person/Org -> Related Entity -> Evidence.",
+        "expected_answer": "Founders: Yashish/Alok. Auditors: Price Waterhouse. Registrar: NCT Delhi."
+    },
+    {
+        "id": "Q9",
+        "question": "For Policybazaar, Paisabazaar, and PB Marketing, list the 'formerly known as' names and order the name-change events chronologically if dates are available. If dates are not available, explicitly state so.",
+        "expected_answer": "Policybazaar -> formerly Policybazaar Insurance Web Aggregator. PB Marketing -> formerly ... Chronology: Date list or 'missing dates'."
+    },
+    {
+        "id": "Q10",
+        "question": "Define 'Equity Shares' and provide the face value. Then list which entities are Shareholders and what relationship connects them to Equity Shares.",
+        "expected_answer": "Equity Shares: Face value ₹2. Shareholders: <list>. Relation: holds."
+    }
+]

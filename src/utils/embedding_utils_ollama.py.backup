@@ -1,0 +1,105 @@
+"""
+Embedding utilities for generating and searching vector embeddings.
+Uses DeepSeekClient (Ollama) for embeddings to avoid heavy dependencies.
+"""
+
+import numpy as np
+import json
+import os
+from typing import List, Dict, Tuple
+from utils.deepseek_client import DeepSeekClient
+from utils.config import DEFAULT_TOP_K
+
+# Global client cache
+_client = None
+
+def get_client() -> DeepSeekClient:
+    """Get or create DeepSeek client"""
+    global _client
+    if _client is None:
+        _client = DeepSeekClient()
+    return _client
+
+def encode_chunks(chunks: List[Dict]) -> Tuple[np.ndarray, Dict[str, int]]:
+    """
+    Encode chunks into embeddings using Ollama.
+    """
+    print("\n=== Generating Embeddings (Ollama) ===")
+    client = get_client()
+    
+    embeddings_list = []
+    index_to_chunk_id = {}
+    
+    total = len(chunks)
+    for i, chunk in enumerate(chunks):
+        if i % 10 == 0:
+            print(f"Encoding chunk {i}/{total}...")
+            
+        text = chunk["text"]
+        embedding = client.get_embedding(text)
+        
+        if embedding:
+            embeddings_list.append(embedding)
+            index_to_chunk_id[str(len(embeddings_list)-1)] = chunk["chunk_id"]
+            
+    embeddings = np.array(embeddings_list)
+    print(f"Embeddings shape: {embeddings.shape}")
+    
+    return embeddings, index_to_chunk_id
+
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """
+    Compute cosine similarity between vectors.
+    """
+    # Normalize vectors
+    a_norm = a / (np.linalg.norm(a, axis=-1, keepdims=True) + 1e-8)
+    b_norm = b / (np.linalg.norm(b, axis=-1, keepdims=True) + 1e-8)
+    
+    # Compute dot product
+    if a_norm.ndim == 1:
+        return np.dot(b_norm, a_norm)
+    else:
+        return np.dot(b_norm, a_norm.T).squeeze()
+
+def search_similar_chunks(
+    question: str,
+    chunks: List[Dict],
+    embeddings: np.ndarray,
+    top_k: int = DEFAULT_TOP_K
+) -> List[Tuple[Dict, float]]:
+    """
+    Search for similar chunks using cosine similarity.
+    """
+    print(f"\n=== Searching for Top {top_k} Similar Chunks ===")
+    
+    client = get_client()
+    query_embedding = np.array(client.get_embedding(question))
+    
+    if query_embedding.size == 0:
+        print("Failed to generate query embedding")
+        return []
+    
+    # Compute similarities
+    similarities = cosine_similarity(query_embedding, embeddings)
+    
+    # Get top K indices
+    top_indices = np.argsort(similarities)[::-1][:top_k]
+    
+    # Build results
+    results = []
+    for idx in top_indices:
+        # Map index back to chunk if needed, but here we assume chunks list is aligned
+        # Note: In encode_chunks we might skip failed embeddings, so alignment is tricky.
+        # Ideally we should pass the index_to_chunk_id map.
+        # For now, let's assume 1:1 mapping if no failures.
+        if idx < len(chunks):
+            chunk = chunks[idx]
+            score = float(similarities[idx])
+            results.append((chunk, score))
+    
+    print(f"Found {len(results)} similar chunks")
+    return results
+
+def get_embedding_model():
+    """Mock function to maintain compatibility if needed, but better to use get_client"""
+    return get_client()

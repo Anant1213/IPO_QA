@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPO Intelligence Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=premium">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Background Effects -->
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#gradient1)" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M2 17L12 22L22 17" stroke="url(#gradient1)" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M2 12L12 17L22 12" stroke="url(#gradient1)" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <defs>
+                                <linearGradient id="gradient1" x1="2" y1="2" x2="22" y2="22">
+                                    <stop offset="0%" stop-color="#6366f1" />
+                                    <stop offset="100%" stop-color="#a855f7" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <span class="logo-text">IPO Intelligence</span>
+                </div>
+
+                <button class="btn-new-chat" onclick="clearChat()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    <span>New Analysis</span>
+                </button>
+            </div>
+
+            <div class="sidebar-content">
+                <div class="section">
+                    <label class="section-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        Active Document
+                    </label>
+                    <select id="documentSelect" class="select-document">
+                        <option value="">Select IPO document...</option>
+                    </select>
+                </div>
+
+                <div class="section">
+                    <button class="btn-upload" onclick="toggleUpload()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                        </svg>
+                        <span>Upload Document</span>
+                    </button>
+                </div>
+
+                <div class="upload-panel" id="uploadPanel" style="display: none;">
+                    <input type="file" id="fileInput" accept=".pdf" hidden>
+                    <div class="dropzone" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                        <div class="dropzone-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                            </svg>
+                        </div>
+                        <p class="dropzone-text">Drop PDF here</p>
+                        <p class="dropzone-hint">or click to browse</p>
+                    </div>
+                    <div class="file-preview" id="filePreview" style="display: none;">
+                        <div class="file-info">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            <span id="fileName"></span>
+                        </div>
+                        <button class="btn-primary-sm" onclick="uploadDocument()">Process</button>
+                    </div>
+                    <div class="upload-progress" id="uploadProgress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <p class="progress-text" id="progressText">Processing document...</p>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="questions-count">0</div>
+                        <div class="stat-label">Queries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avg-time">--</div>
+                        <div class="stat-label">Avg Time</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-content">
+                    <h1 class="header-title">IPO Document Analysis</h1>
+                    <p class="header-subtitle">AI-powered insights from prospectus documents</p>
+                </div>
+                <div class="header-actions">
+                    <!-- RAG Mode Toggle -->
+                    <div class="rag-toggle-container">
+                        <label class="rag-toggle">
+                            <input type="checkbox" id="ragModeToggle">
+                            <span class="rag-toggle-slider">
+                                <span class="rag-mode-label rag-kg">KG RAG</span>
+                                <span class="rag-mode-label rag-vector">Vector RAG</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="model-badge" id="modelBadge">
+                        <div class="badge-dot"></div>
+                        <span>Llama3</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div class="messages-container" id="chatMessages">
+                    <div class="welcome-view" id="welcomeScreen">
+                        <div class="welcome-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="url(#gradient2)" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M2 17L12 22L22 17" stroke="url(#gradient2)" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M2 12L12 17L22 12" stroke="url(#gradient2)" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                                <defs>
+                                    <linearGradient id="gradient2" x1="2" y1="2" x2="22" y2="22">
+                                        <stop offset="0%" stop-color="#6366f1" />
+                                        <stop offset="100%" stop-color="#a855f7" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                        </div>
+                        <h2 class="welcome-title">Start Your IPO Analysis</h2>
+                        <p class="welcome-description">Ask complex questions about IPO documents and get instant,
+                            accurate insights powered by advanced AI</p>
+
+                        <div class="example-grid">
+                            <button class="example-card"
+                                onclick="setQuestion('What are the top 3 risk factors and their potential impact?')">
+                                <div class="example-icon">⚠️</div>
+                                <div class="example-text">Risk Analysis</div>
+                            </button>
+                            <button class="example-card"
+                                onclick="setQuestion('How will the proceeds be used and what is the allocation breakdown?')">
+                                <div class="example-icon">💰</div>
+                                <div class="example-text">Use of Proceeds</div>
+                            </button>
+                            <button class="example-card"
+                                onclick="setQuestion('Summarize the business model and revenue streams')">
+                                <div class="example-icon">📊</div>
+                                <div class="example-text">Business Model</div>
+                            </button>
+                            <button class="example-card"
+                                onclick="setQuestion('What are the key financial metrics and growth trends?')">
+                                <div class="example-icon">📈</div>
+                                <div class="example-text">Financial Metrics</div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <div class="input-container">
+                    <textarea id="chatInput" class="input-field" placeholder="Ask anything about the IPO document..."
+                        rows="1"></textarea>
+                    <button class="btn-send" id="sendBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-hint">
+                    <kbd>Enter</kbd> to send • <kbd>Shift + Enter</kbd> for new line
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}?v=debug_v1"></script>
+</body>
+
+</html>

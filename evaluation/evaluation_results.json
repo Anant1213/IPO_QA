@@ -1,0 +1,201 @@
+[
+  {
+    "id": "Q1",
+    "question": "What is the full name of the company?",
+    "difficulty": "Low",
+    "category": "Basic Fact",
+    "expected_keywords": [
+      "PB Fintech Limited",
+      "Policybazaar"
+    ],
+    "kg_answer": "According to the context, the full name of the company is **Policybazaar Fintech Limited**.",
+    "kg_latency": 16.99,
+    "kg_score": 0.5,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, I can answer your question accurately and concisely.\n\nAccording to Chunk [Score: 0.426] Note 1: General Information, the full name of the company is:\n\n\"PB Fintech Limited (formerly known as PB Fintech Private Limited and ETECHACES Marketing and Consulting Private Limited)\"\n\nThis information can be found on page 191 of the document.According to the context, the full name of the company is **Policybazaar Fintech Limited**.",
+    "vector_latency": 33.05,
+    "vector_score": 1.0,
+    "vector_error": null
+  },
+  {
+    "id": "Q2",
+    "question": "Who is the CEO of the company?",
+    "difficulty": "Low",
+    "category": "Basic Fact",
+    "expected_keywords": [
+      "Yashish Dahiya"
+    ],
+    "kg_answer": "According to the IPO document, Yashish Dahiya is the CEO of PB Fintech Limited.",
+    "kg_latency": 19.12,
+    "kg_score": 1.0,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, I can answer your question accurately and concisely.\n\nAccording to Chunk [Score: 0.527], Mr. Naveen Kukreja is the co-founder and CEO of Paisabazaar. However, since this information is not directly related to the company in question, we need to look elsewhere for the answer.\n\nChunk [Score: 0.495] mentions that Mr. Yashish Dahiya is a Whole-time Director and CFO of our Company, but it does not explicitly state that he is the CEO.\n\nHowever, Chunk [Score: 0.426] provides more relevant information. According to this chunk, Mr. Yashish Dahiya was appointed as Chairman and CEO of our Company, with effect from April 1, 2021, pursuant to a resolution of our Board dated June 28, 2021 and a resolution of our Shareholders dated July 5, 2021.\n\nTherefore, based on the information provided, I can confidently answer your question:\n\nThe CEO of the company is Mr. Yashish Dahiya.According to the IPO document, Yashish Dahiya is the CEO of PB Fintech Limited.",
+    "vector_latency": 44.47,
+    "vector_score": 1.0,
+    "vector_error": null
+  },
+  {
+    "id": "Q3",
+    "question": "Where is the registered office located?",
+    "difficulty": "Low",
+    "category": "Basic Fact",
+    "expected_keywords": [
+      "Gurugram",
+      "Haryana",
+      "122001"
+    ],
+    "kg_answer": "Based on the provided context, I can answer your question.\n\nThe registered office location of **Mr. Sarbvir Singh** (PERSON) is:\n\n\"House No-46, Sector-37, Gautam Buddha Nagar, Noida 201 301, Uttar Pradesh, India\"\n\nThis information is obtained from his attributes: {\"address\": \"House No-46, Sector-37, Gautam Buddha Nagar, Noida 201 301, Uttar Pradesh, India\"}.",
+    "kg_latency": 10.65,
+    "kg_score": 0.0,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, I can answer your question accurately and concisely.\n\nThe relevant chunk for this question is:\n\n[Score: 0.358] 399\nArticle 76 provides that \u201cIn accordance with the provisions of Section 89 of the Act, a Person whose \nname is entered in the Register of Members of the Company as the holder of the Shares but who does \nnot hold the beneficial interest in such Shares shall file with the Company, a declaration to that effect \nin the form prescribed under the Act and the Company shall make necessary filings with the Registrar \nas may be required, within a prescribed period as set out in the Act and the rules framed thereunder.\u201d\n\nHowever, this chunk does not provide information about the registered office location. The relevant chunk for this question is actually:\n\n[Score: 0.424] b.\nUnder the ESI Act, Policybazaar has been allotted ESIC code no. 69000564220001099.\n\nAnd another relevant chunk is:\n\n[Score: 0.370] a) \nThe Designated Intermediary may register the Bids using the online facilities of the Stock \nExchanges. The Designated Intermediaries can also set up facilities for off-line electronic \nregistration of Bids, subject to the condition that they may subsequently upload the off-line data \nfile into the online facilities for Book Building on a regular basis before the closure of the Offer.\n\nHowever, neither of these chunks provides information about the registered office location. The only relevant chunk is:\n\n[Score: 0.370] c. \nExcept as disclosed below, there has been no change in the registered office of our Company since \nthe date of incorporation.  \nDate of change  \nDetails of change in the registered office \nReasons for change \nJuly 9, 2013 \nChange of registered office to Plot No. 119, Sector \n44 Gurgaon, Haryana 122 001, India \nThe \nregistered \noffice \nwas \nchanged in order to acquire a \nlarger office space within the city \nowing to the increase in the \nnumber of employees.\n\nAccording to this chunk, the registered office is located at Plot No. 119, Sector 44 Gurgaon, Haryana 122 001, India.Based on the provided context, I found the following information:\n\n**Mr. Sarbvir Singh** (PERSON)\nAttributes: {\n  \"address\": \"House No-46, Sector-37, Gautam Buddha Nagar, Noida 201 301, Uttar Pradesh, India\"\n}\n\nSince Mr. Sarbvir Singh is mentioned as having an address in the context, I can infer that this address might be related to his registered office location.\n\n**PB Fintech Limited** (COMPANY)\nRelationships: None\n\nUnfortunately, there is no direct information about the registered office location of PB Fintech Limited or any other company mentioned in the context.",
+    "vector_latency": 45.41,
+    "vector_score": 0.33,
+    "vector_error": null
+  },
+  {
+    "id": "Q4",
+    "question": "Who are the promoters of the company?",
+    "difficulty": "Medium",
+    "category": "List/Structure",
+    "expected_keywords": [
+      "Yashish Dahiya",
+      "Alok Bansal",
+      "SVF Python"
+    ],
+    "kg_answer": "Based on the IPO document, the promoters of the company are:\n\n1. Yashish Dahiya\n2. Mr. Alok Bansal\n3. Shikha Dahiya (wife of Yashish Dahiya)\n\nThese individuals have been identified as the promoters of the company through their roles and relationships with the company, including being directors, CEOs, and signatories to various documents.",
+    "kg_latency": 23.21,
+    "kg_score": 0.67,
+    "kg_error": null,
+    "vector_answer": "According to the provided text chunks, the answer is:\n\nOur Company does not have an identifiable promoter in terms of SEBI ICDR Regulations and the Companies Act, 2013. This is mentioned in two separate chunks with relevance scores of 0.554 and 0.531.\n\nSpecifically, Chunk [Score: 0.554] states: \"Guarantees provided to third parties by promoters ... Our Company is a professionally managed company and does not have an identifiable promoter.\"\n\nChunk [Score: 0.531] also confirms this, stating: \"Our Company is a professionally managed company and does not have an identifiable promoter in terms of SEBI ICDR Regulations and the Companies Act, 2013.\"Based on the IPO document, the promoters of the company are:\n\n1. Yashish Dahiya\n2. Mr. Alok Bansal\n3. Shikha Dahiya (wife of Yashish Dahiya)\n\nThese individuals have been identified as the promoters of the company through their roles and relationships with the company, including being directors, CEOs, and owners of subsidiaries.",
+    "vector_latency": 38.03,
+    "vector_score": 0.67,
+    "vector_error": null
+  },
+  {
+    "id": "Q5",
+    "question": "What was the Total Revenue for Fiscal 2021?",
+    "difficulty": "Medium",
+    "category": "Financial",
+    "expected_keywords": [
+      "2021",
+      "5913",
+      "million"
+    ],
+    "kg_answer": "I apologize, but there is no information about Total Revenue for Fiscal 2021 in the provided context. The only available financial data related to revenue is:\n\n**Total Revenue (Rs. in Millions)** (FINANCIAL_METRIC)\nAttributes: {\n  \"metric_name\": \"Total Revenue\",\n  \"value\": 138.06,\n  \"currency\": \"INR\",\n  \"unit\": \"million\",\n  \"year\": \"2020\"\n}\n\nThis indicates that the Total Revenue for Fiscal 2020 was INR 138.06 million, but there is no information about Fiscal 2021.",
+    "kg_latency": 11.4,
+    "kg_score": 0.67,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, I can answer your question accurately and concisely.\n\nThe relevant chunk is:\n\n[Score: 0.565] 313\nRevenue from operations \nOur revenue from operations increased by \u20b91,153.65 million, or 15.0%, to \u20b98,866.62 million in Fiscal \n2021 from \u20b97,712.97 million in Fiscal 2020.\n\nAccordingly, the Total Revenue for Fiscal 2021 was \u20b98,866.62 million.I apologize, but there is no information about Total Revenue for Fiscal 2021 in the provided context. The only available financial data related to revenue is:\n\n**Total Revenue (Rs. in Millions)** (FINANCIAL_METRIC)\nAttributes: {\n  \"metric_name\": \"Total Revenue\",\n  \"value\": 138.06,\n  \"currency\": \"INR\",\n  \"unit\": \"million\",\n  \"year\": \"2020\"\n}\n\nThis indicates that the Total Revenue for Fiscal 2020 was INR 138.06 million, but there is no information about Fiscal 2021.",
+    "vector_latency": 28.29,
+    "vector_score": 0.67,
+    "vector_error": null
+  },
+  {
+    "id": "Q6",
+    "question": "What are the internal risk factors?",
+    "difficulty": "Medium",
+    "category": "Risk",
+    "expected_keywords": [
+      "maintain",
+      "partners",
+      "brand",
+      "reputation",
+      "relationships"
+    ],
+    "kg_answer": "Based on the provided context, I did not find any specific internal risk factors mentioned. The context only mentions external regulatory bodies and financial metrics. If you're looking for information on internal risk factors, it's possible that they may be discussed in other sections of the IPO document or in a separate report.",
+    "kg_latency": 6.21,
+    "kg_score": 0.0,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, the internal risk factors mentioned are:\n\n1. The COVID-19 pandemic or a similar public health threat could adversely affect our business, financial condition, and results of operations.\n2. Recognition of deferred tax assets for carried forward tax losses\n3. Leases\n4. Contingent liabilities\n5. Share-based payments\n6. Increased risks associated with remote working arrangements, such as digital threats and cyber-attacks.\n\nThese internal risk factors are mentioned in the \"Internal Risk Factors\" section (Score: 0.456) of the Draft Red Herring Prospectus.Based on the provided context, there is no explicit mention of internal risk factors. The context only mentions external regulatory bodies and financial metrics. Therefore, I would say that information about internal risk factors is not available in this context.\n\nHowever, if you're looking for information related to risk management, we can explore the Risk Management Policy and its attributes. According to the policy, it's implemented by the Board of Directors, which suggests that the company has a structured approach to managing risks. The policy also mentions monitoring responsibility, frequency, and considerations, indicating that the company is proactive in identifying and mitigating potential risks.\n\nIf you'd like me to elaborate on any specific aspect of risk management or provide more information about the financial metrics, please feel free to ask!",
+    "vector_latency": 28.28,
+    "vector_score": 0.0,
+    "vector_error": null
+  },
+  {
+    "id": "Q7",
+    "question": "Who are the Selling Shareholders in the Offer for Sale?",
+    "difficulty": "High",
+    "category": "Reasoning",
+    "expected_keywords": [
+      "SVF Python",
+      "Yashish Dahiya",
+      "Alok Bansal",
+      "Founder United Trust",
+      "Shikha Dahiya"
+    ],
+    "kg_answer": "Based on the provided context, the Selling Shareholders are:\n\n1. **Rajendra Singh Kuhar** (PERSON) - owns 74,850 equity shares (Nil%)\n2. **Shikha Dahiya** (PERSON) - owns 144,750 equity shares (24.87%)\n\nThese two individuals are identified as Selling Shareholders in the context.",
+    "kg_latency": 15.72,
+    "kg_score": 0.2,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, the Selling Shareholders in the Offer for Sale are:\n\n1. SVF Python II (Cayman) Limited\n2. Mr. Yashish Dahiya\n3. Mr. Alok Bansal\n4. Founder United Trust\n5. Ms. Shikha Dahiya\n6. Mr. Rajendra Singh Kuhar\n\nThese individuals have authorized and confirmed the inclusion of their portion of the Offered Shares as part of the Offer for Sale, as set out in the table on page 361.Based on the provided context, the Selling Shareholders are:\n\n1. **Rajendra Singh Kuhar** (PERSON) - owns 74,850 equity shares (Nil%)\n2. **Shikha Dahiya** (PERSON) - owns 144,750 equity shares (24.87%)\n\nThese two individuals are identified as Selling Shareholders in the context.",
+    "vector_latency": 29.75,
+    "vector_score": 1.0,
+    "vector_error": null
+  },
+  {
+    "id": "Q8",
+    "question": "Explain the company's business model.",
+    "difficulty": "High",
+    "category": "Synthesis",
+    "expected_keywords": [
+      "insurance",
+      "lending",
+      "platform",
+      "consumers",
+      "insurers",
+      "partners",
+      "online"
+    ],
+    "kg_answer": "Based on the provided context, Policybazaar Fintech Limited (PB Fintech Limited) is a fintech company that operates in the Indian market. The company's business model can be inferred as follows:\n\n1. **Insurance Broking**: PB Fintech Limited offers insurance broking services through its subsidiary, Policybazaar Insurance Brokers Private Limited.\n2. **Financial Services**: The company provides various financial services, including lending and credit products, through its subsidiaries and joint ventures.\n3. **Digital Platform**: PB Fintech Limited operates a digital platform that connects customers with financial institutions, insurance companies, and other service providers.\n4. **Data-Driven Insights**: The company leverages data analytics to provide insights and recommendations to customers, helping them make informed decisions about their financial products and services.\n\nThe company's business model is centered around its subsidiaries and joint ventures, which operate in various segments of the fintech industry. PB Fintech Limited has a strong presence in the Indian market, with a significant stake in Policybazaar, Paisabazaar, and other subsidiaries.\n\nPlease note that this analysis is based on the provided context and may not be an exhaustive representation of the company's business model.",
+    "kg_latency": 21.95,
+    "kg_score": 0.43,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, I can explain the company's business model as follows:\n\nThe company operates in the online fintech industry, with two main platforms: Policybazaar (online insurance product and service) and Paisabazaar (online credit). The company's founders have a deep understanding of consumers' pain points and structural problems in the insurance and financial services industry. They aim to grow their consumer base, market share, and enhance consumer engagement in a cost-efficient manner.\n\nThe company's business model involves:\n\n1. Developing and maintaining relationships with existing insurers and lending partners, while attracting new ones.\n2. Enhancing and maintaining the value of its \"Policybazaar\" and \"Paisabazaar\" brands.\n3. Navigating and complying with an evolving regulatory environment.\n4. Sharing data insights with insurers and lending partners to assist them in developing and launching diversified products.\n5. Growing its consumer base, market share, and enhancing consumer engagement.\n\nThe company also aims to:\n\n1. Effectively implement business development and growth strategies to further increase revenues.\n2. Enhance credit management and risk control capabilities.\n3. Maintain a secure and scalable technology infrastructure.\n4. Maintain its technology- and data-focused corporate culture and continue to attract, retain, and motivate talented employees.\n\nThe company's growth strategy involves broadening and deepening its consumer reach in India, while also providing data insights to insurers and lending partners to assist them in innovating and designing better products for consumers.\n\nOverall, the company's business model is focused on leveraging its technology and data capabilities to provide innovative solutions to consumers in the insurance and credit industries.Based on the provided context, Policybazaar Fintech Limited (PB Fintech Limited) is a fintech company that operates in the Indian market. The company's business model can be inferred as follows:\n\n1. **Insurance Broking**: PB Fintech Limited offers insurance broking services through its subsidiary, Policybazaar Insurance Brokers Private Limited.\n2. **Financial Services**: The company provides various financial services, including lending, credit, and other related products.\n3. **Digital Platform**: PB Fintech Limited operates a digital platform that enables customers to compare and purchase insurance policies, as well as access other financial services.\n4. **Subsidiaries and Joint Ventures**: The company has subsidiaries and joint ventures in various sectors, including fintech, marketing, consulting, and more.\n\nThe company's business model is focused on leveraging technology to provide innovative financial solutions to customers, while also expanding its presence through strategic acquisitions and partnerships.\n\nPlease note that this analysis is based on the provided context and may not be a comprehensive representation of the company's entire business model.",
+    "vector_latency": 43.62,
+    "vector_score": 1.0,
+    "vector_error": null
+  },
+  {
+    "id": "Q9",
+    "question": "What is the restated loss for the year 2021?",
+    "difficulty": "High",
+    "category": "Complex Financial",
+    "expected_keywords": [
+      "2021",
+      "2965",
+      "2980",
+      "million",
+      "loss"
+    ],
+    "kg_answer": "According to the context, the Restated Loss for the Year FY2021 has a value of -10 million INR.",
+    "kg_latency": 5.22,
+    "kg_score": 0.6,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, I can answer your question accurately and concisely.\n\nAccording to Chunk [Score: 0.774], the Restated Loss for the year 2021 is:\n\n(1,502.42)\n\nThis information is directly stated in the chunk with a relevance score of 0.774, indicating high relevance to the question.According to the context, the Restated Loss for the Year FY2021 has a value of -10 million INR.",
+    "vector_latency": 14.59,
+    "vector_score": 0.6,
+    "vector_error": null
+  },
+  {
+    "id": "Q10",
+    "question": "Does the company have any subsidiaries? List them.",
+    "difficulty": "High",
+    "category": "Specificity",
+    "expected_keywords": [
+      "Policybazaar",
+      "Paisabazaar",
+      "Docprime",
+      "Imo-Ad",
+      "Accurex"
+    ],
+    "kg_answer": "Based on the IPO document, I can answer your question. According to the Knowledge Graph, yes, the company has several subsidiaries. Here are some of them:\n\n1. Policybazaar Insurance Brokers Private Limited\n2. Accurex Marketing and Consulting Private Limited\n3. Docprime Technologies Private Limited\n4. Icall Support Services Private Limited\n5. Paisabazaar Marketing and Consulting Private Limited\n6. PB Marketing And Consulting Private Limited (Erstwhile, Policybazaar Insurance Broking Private Limited)\n7. Makesense Technologies Limited\n\nThese subsidiaries are either directly or indirectly related to the company, PB Fintech Limited.",
+    "kg_latency": 27.09,
+    "kg_score": 0.8,
+    "kg_error": null,
+    "vector_answer": "Based on the provided text chunks, I can answer your question accurately and concisely.\n\nAccording to [Score: 0.617] Our Holding Company, as of the date of this Draft Red Herring Prospectus, our Company does not have a holding company. However, it has seven wholly-owned Subsidiaries. For details regarding these Subsidiaries, please see \u201cOur Subsidiaries\u201d on page 194.\n\nTherefore, the answer to your question is:\n\nYes, the company has subsidiaries. The names of these subsidiaries are not explicitly mentioned in the provided text chunks. However, it can be inferred that they are listed under \"Our Subsidiaries\" on page 194.Based on the IPO document, I can answer your question. According to the Knowledge Graph, the company has several subsidiaries:\n\n1. Policybazaar\n2. Paisabazaar\n3. Makesense Technologies Limited (being amalgamated into our Company)\n4. Docprime Technologies Private Limited (subordinate to PB Fintech FZ LLC)\n5. Icall Support Services Private Limited (subordinate to PB Fintech FZ LLC)\n6. Paisabazaar Marketing and Consulting Private Limited (subordinate to PB Fintech FZ LLC)\n\nPlease note that these subsidiaries may have their own separate IPO documents or filings, which would provide more detailed information about each subsidiary's operations, financials, and other relevant details.",
+    "vector_latency": 42.94,
+    "vector_score": 0.6,
+    "vector_error": null
+  }
+]
