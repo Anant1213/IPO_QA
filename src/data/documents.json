@@ -1,0 +1,34 @@
+[
+  {
+    "document_id": "policybazar_ipo",
+    "filename": "PB_Fintech_DRHP.pdf",
+    "display_name": "PB Fintech (PolicyBazaar)",
+    "total_pages": 600,
+    "total_chunks": 1500,
+    "file_hash": "policybazaar_pb_fintech_hash"
+  },
+  {
+    "document_id": "emt_ipo",
+    "filename": "EMT_IPO.pdf",
+    "display_name": "EMT IPO",
+    "total_pages": 400,
+    "total_chunks": 800,
+    "file_hash": "emt_ipo_hash"
+  },
+  {
+    "document_id": "pw_ipo",
+    "filename": "PW_IPO.pdf",
+    "display_name": "Physics Wallah IPO",
+    "total_pages": 500,
+    "total_chunks": 1000,
+    "file_hash": "pw_ipo_hash"
+  },
+  {
+    "document_id": "lenskart_solutions_limited_drhp_1753782641",
+    "filename": "Lenskart_DRHP.pdf",
+    "display_name": "Lenskart Solutions",
+    "total_pages": 450,
+    "total_chunks": 900,
+    "file_hash": "lenskart_hash"
+  }
+]

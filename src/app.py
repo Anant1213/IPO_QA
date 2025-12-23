@@ -77,6 +77,9 @@ from utils.graph_store import GraphStore
 from utils.answer_formatter import AnswerFormatter
 from utils.deepseek_client import DeepSeekClient
 
+# Database repositories
+from database.repositories import DocumentRepository, ChunkRepository, EmbeddingRepository
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['DATA_FOLDER'] = DATA_DIR
@@ -188,27 +191,24 @@ def get_file_hash(filepath):
     return hash_md5.hexdigest()
 
 def load_documents_index():
-    """Load the master documents index."""
-    if os.path.exists(DOCUMENTS_INDEX):
-        try:
-            with open(DOCUMENTS_INDEX, 'r') as f:
-                return json.load(f)
-        except:
-            return []
-    return []
+    """Load documents from database."""
+    try:
+        return DocumentRepository.get_all()
+    except Exception as e:
+        print(f"Error loading documents from database: {e}")
+        return []
 
 def save_documents_index(documents):
-    """Save the master documents index."""
-    with open(DOCUMENTS_INDEX, 'w') as f:
-        json.dump(documents, f, indent=2)
+    """DEPRECATED: Documents are now saved directly to database."""
+    pass  # No-op, kept for compatibility
 
 def check_duplicate(file_hash):
-    """Check if a file with this hash already exists."""
-    documents = load_documents_index()
-    for doc in documents:
-        if doc.get('file_hash') == file_hash:
-            return doc
-    return None
+    """Check if a file with this hash already exists in database."""
+    try:
+        return DocumentRepository.get_by_hash(file_hash)
+    except Exception as e:
+        print(f"Error checking duplicate: {e}")
+        return None
 
 def generate_document_id(filename):
     """Generate a unique document ID from filename."""
@@ -345,111 +345,156 @@ class KnowledgeGraphRAG:
         return self.formatter.format(output, question)
 
 class HybridRAG:
-    """Orchestrates KG and Vector RAG"""
+    """Orchestrates KG and Vector RAG with simple keyword routing (fast, no mutex issues)"""
     def __init__(self, kg_rag, vector_rag):
         self.kg_rag = kg_rag
         self.vector_rag = vector_rag
+        
+        # Use simple QueryRouter to avoid mutex lock issues on Apple Silicon
+        # SemanticRouter causes threading issues due to new DeepSeekClient instance
         self.router = QueryRouter()
+        
         self.client = vector_rag.client
         self.formatter = vector_rag.formatter
     
     def query(self, question):
-        mode = self.router.route(question)
-        print(f"🔀 HybridRAG: Routing query to '{mode}' mode")
+        # Get routing decision from simple keyword-based router
+        route = self.router.route(question)
         
-        if mode == 'kg':
+        print(f"🧠 HybridRAG: Route = {route}")
+        
+        if route == 'kg':
+            print(f"  → Routing to KG: {question[:50]}...")
             return self.kg_rag.query(question)
-        elif mode == 'vector':
+        elif route == 'vector':
+            print(f"  → Routing to Vector: {question[:50]}...")
             return self.vector_rag.query(question)
         else:
-            # Hybrid
-            print("⚡ HybridRAG: Fetching context from both systems...")
-            kg_context = self.kg_rag.retrieve_context(question)
-            vec_context = self.vector_rag.retrieve_context(question)
+            # Hybrid - use both
+            print(f"  → Routing to Hybrid (both): {question[:50]}...")
+            return self._execute_hybrid(question)
+    
+    def _execute_hybrid(self, question):
+        """Execute using both KG and Vector context"""
+        kg_context = self.kg_rag.retrieve_context(question)
+        vec_context = self.vector_rag.retrieve_context(question)
+        
+        combined_context = f"""
+[STRUCTURED DATA from Knowledge Graph]
+{kg_context}
+
+[TEXTUAL EVIDENCE from Document Chunks]
+{vec_context}
+"""
+        
+        system_prompt = """You are an expert analyst with access to both a Knowledge Graph (structured data) and Document Chunks (text).
+- Use KG data for specific relationships, ownership, and stats.
+- Use Textual Evidence for definitions, policies, and descriptions.
+- Synthesize both sources into a coherent answer."""
+        
+        user_prompt = f"Context:\n{combined_context}\n\nQuestion: {question}\n\nAnswer:"
+        
+        output = self.client.query(user_prompt, system_prompt)
+        return self.formatter.format(output, question)
+    
+    def _execute_multi_step(self, original_question, queries):
+        """Execute multiple sub-queries and synthesize results"""
+        sub_results = []
+        
+        for i, q in enumerate(queries):
+            source = q.get('source', 'hybrid')
+            sub_question = q.get('question', original_question)
             
-            combined_context = f"""
-            [STRUCTURED DATA from Knowledge Graph]
-            {kg_context}
+            print(f"  [{i+1}/{len(queries)}] {source.upper()}: {sub_question[:40]}...")
             
-            [TEXTUAL EVIDENCE from Document Chunks]
-            {vec_context}
-            """
+            if source == 'kg':
+                context = self.kg_rag.retrieve_context(sub_question)
+            elif source == 'vector':
+                context = self.vector_rag.retrieve_context(sub_question)
+            else:
+                kg_ctx = self.kg_rag.retrieve_context(sub_question)
+                vec_ctx = self.vector_rag.retrieve_context(sub_question)
+                context = f"[KG]\n{kg_ctx}\n\n[Vector]\n{vec_ctx}"
             
-            system_prompt = """You are an expert analyst. You have access to both a Knowledge Graph (structured data) and Document Chunks (text).
-            - Use KG data for specific relationships, ownership paths, and specific stats.
-            - Use Textual Evidence for definitions, policies, and detailed descriptions.
-            - Resolve conflicts by prioritizing the Textual Evidence if it quotes the document directly, unless the Question is about graph structure (e.g. paths)."""
-            
-            user_prompt = f"Context:\n{combined_context}\n\nQuestion: {question}\n\nAnswer:"
-            
-            output = self.client.query(user_prompt, system_prompt)
-            return self.formatter.format(output, question)
+            sub_results.append({
+                'question': sub_question,
+                'source': source,
+                'context': context
+            })
+        
+        # Synthesize all results
+        combined_context = "\n\n---\n\n".join([
+            f"**Sub-Query {i+1}** ({r['source'].upper()}): {r['question']}\n{r['context']}"
+            for i, r in enumerate(sub_results)
+        ])
+        
+        system_prompt = """You are an expert analyst synthesizing information from multiple retrieval steps.
+Each sub-query retrieved specific information. Combine them into a coherent answer to the original question.
+Be precise and cite specific data points from each sub-query result."""
+        
+        user_prompt = f"""Original Question: {original_question}
+
+Retrieved Information:
+{combined_context}
+
+Synthesized Answer:"""
+        
+        output = self.client.query(user_prompt, system_prompt)
+        return self.formatter.format(output, original_question)
 
 class VectorRAG:
-    """Vector-based RAG using embeddings and cosine similarity"""
+    """Vector-based RAG using embeddings and cosine similarity from database"""
     
-    def __init__(self, doc_folder):
+    def __init__(self, doc_folder, document_id):
         # Lazy import to avoid dependency issues at startup
-        from utils.embedding_utils import get_embedding_model, cosine_similarity
+        from utils.embedding_utils import get_embedding_model
         
-        self.doc_folder = doc_folder
+        self.doc_folder = doc_folder  # Keep for compatibility
+        self.document_id = document_id
         self.client = DeepSeekClient()
         self.formatter = AnswerFormatter()
-        self.cosine_similarity = cosine_similarity  # Store reference
-        
-        # Load chunks
-        chunks_path = os.path.join(doc_folder, 'chunks.json')
-        with open(chunks_path, 'r') as f:
-            self.chunks = json.load(f)
-        
-        # Load embeddings
-        embeddings_path = os.path.join(doc_folder, 'embeddings.npy')
-        self.embeddings = np.load(embeddings_path)
         
         # Get embedding model for query encoding
         self.model = get_embedding_model()
         
-        print(f"Vector RAG loaded: {len(self.chunks)} chunks")
+        print(f"Vector RAG initialized for document: {document_id}")
     
     def retrieve_context(self, question, top_k=5):
-        """Retrieve relevant context chunks"""
+        """Retrieve relevant context chunks from database"""
         # Encode question
         question_embedding = self.model.encode([question], convert_to_numpy=True)[0]
         
-        # Compute cosine similarity
-        similarities = self.cosine_similarity(question_embedding, self.embeddings)
+        # Search using database
+        results = EmbeddingRepository.search_similar(
+            query_embedding=question_embedding,
+            document_id=self.document_id,
+            top_k=top_k
+        )
         
-        # Get top-K chunks
-        top_indices = np.argsort(similarities)[::-1][:top_k]
-        
-        # Build context from top chunks
+        # Build context from results
         context_parts = []
-        for idx in top_indices:
-            chunk = self.chunks[idx]
-            score = float(similarities[idx])
-            context_parts.append(f"[Score: {score:.3f}] {chunk['text']}")
+        for result in results:
+            score = result['similarity']
+            text = result['text']
+            context_parts.append(f"[Score: {score:.3f}] {text}")
         
         return "\n\n".join(context_parts)
-
+    
     def query(self, question, top_k=5):
-        """Query using vector similarity"""
+        """Answer question using vector similarity"""
         context = self.retrieve_context(question, top_k)
         
-        # Generate answer
-        system_prompt = """You are an expert analyst answering questions about IPO documents.
+        prompt = f"""Based on the following information, answer the question concisely and accurately.
 
-Use the provided text chunks to answer the question accurately and concisely.
-Each chunk has a relevance score. Higher scores indicate more relevant content.
-Cite specific information from the chunks in your answer."""
-
-        user_prompt = f"""Context:
+Context:
 {context}
-
+```
+            
 Question: {question}
 
 Answer:"""
         
-        output = self.client.query(user_prompt, system_prompt)
+        output = self.client.query(prompt, "")
         return self.formatter.format(output, question)
 
 
@@ -463,11 +508,17 @@ def simple():
 
 @app.route('/api/documents', methods=['GET'])
 def list_documents():
-    documents = load_documents_index()
-    return jsonify({'documents': documents})
+    """Get all documents from database."""
+    try:
+        documents = DocumentRepository.get_all()
+        return jsonify({'documents': documents})
+    except Exception as e:
+        print(f"Error listing documents: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/upload', methods=['POST'])
 def upload_and_process():
+    """Upload and process PDF document - saves to database"""
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
     
@@ -490,7 +541,7 @@ def upload_and_process():
         file_hash = get_file_hash(filepath)
         
         # Check for duplicate
-        duplicate = check_duplicate(file_hash)
+        duplicate = DocumentRepository.get_by_hash(file_hash)
         if duplicate:
             os.remove(filepath)
             return jsonify({
@@ -506,37 +557,90 @@ def upload_and_process():
         
         print(f"Processing document: {document_id}")
         
-        # Extract and process (Simplified for now - no embeddings)
+        # Extract pages
         pages = extract_pages(filepath)
-        # chapters = detect_chapters(pages)
-        # chunks = build_chunks(pages, chapters)
         
-        # NOTE: Embedding generation disabled to avoid dependency issues
-        # embeddings, embedding_meta = encode_chunks(chunks)
+        # Detect chapters and build chunks
+        from utils.text_utils import detect_chapters, build_chunks
+        chapters = detect_chapters(pages)
+        chunks = build_chunks(pages, chapters)
         
-        # Create document metadata
-        document_meta = {
+        print(f"Extracted {len(chunks)} chunks from {len(pages)} pages")
+        
+        # Generate embeddings
+        from utils.embedding_utils import get_embedding_model
+        model = get_embedding_model()
+        chunk_texts = [c['text'] for c in chunks]
+        embeddings_array = model.encode(chunk_texts, convert_to_numpy=True, show_progress_bar=True)
+        
+        print(f"Generated embeddings for {len(embeddings_array)} chunks")
+        
+        # Create document in database
+        doc_data = {
             'document_id': document_id,
             'filename': filename,
             'display_name': os.path.splitext(filename)[0].replace('_', ' ').title(),
             'file_hash': file_hash,
-            'upload_date': datetime.now().isoformat(),
+            'file_path': filepath,
             'total_pages': len(pages),
-            'total_chapters': 0, # len(chapters),
-            'total_chunks': 0, # len(chunks),
-            'file_path': filepath
+            'total_chunks': len(chunks),
+            'doc_metadata': {
+                'total_chapters': len(chapters),
+                'upload_date': datetime.now().isoformat()
+            }
         }
         
-        # Add to index
-        documents = load_documents_index()
-        documents.append(document_meta)
-        save_documents_index(documents)
+        doc_result = DocumentRepository.create(doc_data)
+        doc_db_id = doc_result['id']
+        
+        print(f"Created document in database: ID={doc_db_id}")
+        
+        # Prepare chunks for bulk insert
+        chunks_data = []
+        for idx, chunk in enumerate(chunks):
+            chunks_data.append({
+                'document_id': doc_db_id,
+                'chunk_index': idx,
+                'text': chunk['text'],
+                'page_number': chunk.get('page_number'),
+                'word_count': len(chunk['text'].split()),
+                'chunk_metadata': {
+                    'page_numbers': chunk.get('page_numbers', []),
+                    'chapter': chunk.get('chapter', '')
+                }
+            })
+        
+        # Bulk insert chunks
+        chunk_ids = ChunkRepository.create_many(chunks_data)
+        print(f"Inserted {len(chunk_ids)} chunks")
+        
+        # Prepare embeddings for bulk insert
+        embeddings_data = []
+        for chunk_id, embedding in zip(chunk_ids, embeddings_array):
+            embeddings_data.append({
+                'chunk_id': chunk_id,
+                'embedding': embedding.tolist(),
+                'model_name': 'all-MiniLM-L6-v2'
+            })
+        
+        # Bulk insert embeddings
+        emb_count = EmbeddingRepository.create_many(embeddings_data)
+        print(f"Inserted {emb_count} embeddings")
+        
+        # Update document with final counts
+        DocumentRepository.update(document_id, {
+            'total_chunks': len(chunks),
+            'processed_at': datetime.now()
+        })
         
         print(f"Document processed successfully: {document_id}")
         
+        # Return document metadata
+        final_doc = DocumentRepository.get_by_id(document_id)
+        
         return jsonify({
-            'document': document_meta,
-            'message': f'Successfully processed {filename} (KG generation pending)'
+            'document': final_doc,
+            'message': f'Successfully processed {filename} ({len(chunks)} chunks, {len(pages)} pages)'
         })
     
     except Exception as e:
@@ -547,10 +651,13 @@ def upload_and_process():
             'traceback': traceback.format_exc()
         }), 500
 
-# Initialize global RAG instances
-kg_rag = None
-vector_rag = None
-hybrid_rag = None
+# Initialize global RAG instances - now track which document they're for
+rag_instances = {
+    'kg_rag': None,
+    'vector_rag': None,
+    'hybrid_rag': None,
+    'current_document_id': None  # Track which document the RAG is initialized for
+}
 
 @app.route('/api/ask', methods=['POST'])
 def ask_question():
@@ -568,23 +675,53 @@ def ask_question():
         return jsonify({'error': 'No document selected'}), 400
     
     def generate():
-        global kg_rag, vector_rag, hybrid_rag
+        global rag_instances
         
         try:
             doc_folder = os.path.join(app.config['DOCUMENTS_FOLDER'], document_id)
             
-            # Initialize Vector RAG if needed
-            if vector_rag is None and rag_mode in ['vector', 'auto', 'hybrid']:
-                yield json.dumps({"type": "status", "msg": "Initializing Vector RAG..."}) + "\n"
-                chunks_path = os.path.join(doc_folder, 'chunks.json')
-                embeddings_path = os.path.join(doc_folder, 'embeddings.npy')
-                if not os.path.exists(chunks_path) or not os.path.exists(embeddings_path):
-                     yield json.dumps({"type": "error", "msg": "Vector embeddings not found"}) + "\n"
-                     return
-                vector_rag = VectorRAG(doc_folder)
+            # CRITICAL FIX: Check if document changed - if so, reset all RAG instances
+            if rag_instances['current_document_id'] != document_id:
+                print(f"🔄 Document changed: {rag_instances['current_document_id']} -> {document_id}", flush=True)
+                rag_instances['kg_rag'] = None
+                rag_instances['vector_rag'] = None
+                rag_instances['hybrid_rag'] = None
+                rag_instances['current_document_id'] = document_id
+            
+            # Initialize Vector RAG for current document
+            if rag_mode in ['vector', 'auto', 'hybrid']:
+                yield json.dumps({"type": "status", "msg": f"Loading data for {document_id}..."}) + "\n"
+                
+                # DEBUG: Check what document_id we received
+                print(f"🔍 DEBUG: Looking up document_id = '{document_id}'", flush=True)
+                
+                # Check if document exists in database
+                doc = DocumentRepository.get_by_id(document_id)
+                
+                # DEBUG: Log the result
+                print(f"📊 DEBUG: Document lookup result = {doc}", flush=True)
+                
+                if not doc:
+                    error_msg = f"Document '{document_id}' not found in database"
+                    print(f"❌ ERROR: {error_msg}", flush=True)
+                    yield json.dumps({"type": "error", "msg": error_msg}) + "\n"
+                    return
+                
+                if doc['total_chunks'] == 0:
+                    error_msg = f"Document '{document_id}' has no chunks"
+                    print(f"⚠️ WARNING: {error_msg}", flush=True)
+                    yield json.dumps({"type": "error", "msg": error_msg}) + "\n"
+                    return
+                
+                print(f"✅ Found document: {doc['display_name']} ({doc['total_chunks']} chunks)", flush=True)
+                
+                # Create or reuse VectorRAG instance
+                if rag_instances['vector_rag'] is None:
+                    rag_instances['vector_rag'] = VectorRAG(doc_folder, document_id)
+                    print(f"✅ Initialized VectorRAG for: {document_id}", flush=True)
 
-            # Initialize KG RAG if needed
-            if kg_rag is None and rag_mode in ['kg', 'auto', 'hybrid']:
+            # Initialize KG RAG if needed (only if not already initialized for this document)
+            if rag_instances['kg_rag'] is None and rag_mode in ['kg', 'auto', 'hybrid']:
                  yield json.dumps({"type": "status", "msg": "Initializing Knowledge Graph..."}) + "\n"
                  kg_path = os.path.join(doc_folder, 'knowledge_graph', 'knowledge_graph.json')
                  if not os.path.exists(kg_path):
@@ -597,15 +734,17 @@ def ask_question():
                     entity_map = {e['name'].lower(): e for e in entities}
                  
                  graph_store = GraphStore.load(kg_path)
-                 kg_rag = KnowledgeGraphRAG(graph_store, entity_map)
+                 rag_instances['kg_rag'] = KnowledgeGraphRAG(graph_store, entity_map)
+                 print(f"✅ Initialized KnowledgeGraphRAG for: {document_id}", flush=True)
             
-            # Initialize Hybrid RAG
-            if hybrid_rag is None and rag_mode in ['auto', 'hybrid']:
+            # Initialize Hybrid RAG (only if not already initialized for this document)
+            if rag_instances['hybrid_rag'] is None and rag_mode in ['auto', 'hybrid']:
                 # Ensure components are available
-                if kg_rag is None or vector_rag is None:
+                if rag_instances['kg_rag'] is None or rag_instances['vector_rag'] is None:
                      yield json.dumps({"type": "error", "msg": "Hybrid mode requires both KG and Vector RAG"}) + "\n"
                      return
-                hybrid_rag = HybridRAG(kg_rag, vector_rag)
+                rag_instances['hybrid_rag'] = HybridRAG(rag_instances['kg_rag'], rag_instances['vector_rag'])
+                print(f"✅ Initialized HybridRAG for: {document_id}", flush=True)
 
             
             # Execute Query
@@ -613,12 +752,12 @@ def ask_question():
             
             answer = ""
             if rag_mode == 'vector':
-                answer = vector_rag.query(question)
+                answer = rag_instances['vector_rag'].query(question)
             elif rag_mode == 'kg':
-                answer = kg_rag.query(question)
+                answer = rag_instances['kg_rag'].query(question)
             else:
                 # 'auto' or 'hybrid'
-                answer = hybrid_rag.query(question)
+                answer = rag_instances['hybrid_rag'].query(question)
                 
             yield json.dumps({"type": "token", "content": answer}) + "\n"
             yield json.dumps({"type": "done"}) + "\n"
