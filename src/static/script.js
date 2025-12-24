@@ -210,7 +210,10 @@ async function loadDocuments() {
             data.documents.forEach(doc => {
                 const option = document.createElement('option');
                 option.value = doc.document_id;
-                option.textContent = `${doc.display_name} (${doc.total_pages} pages)`;
+                // Show KG badge in document name if available
+                const kgBadge = doc.has_kg ? ' ✨' : '';
+                option.textContent = `${doc.display_name}${kgBadge} (${doc.total_pages} pages)`;
+                option.dataset.hasKg = doc.has_kg ? 'true' : 'false';
                 select.appendChild(option);
             });
 
@@ -641,6 +644,11 @@ async function sendMessage() {
 
                         chatHistory.push({ role: 'assistant', content: currentText });
                     }
+                    else if (data.type === 'warning') {
+                        // KG fallback warning - show toast but continue
+                        console.warn('⚠️ Backend warning:', data.msg);
+                        showNotification(data.msg, 'warning');
+                    }
                     else if (data.type === 'error') {
                         console.error('❌ Backend error:', data.msg);
                         updateAssistantMessage(assistantMsg,
@@ -742,6 +750,9 @@ function showNotification(message, type = 'info') {
     } else if (type === 'success') {
         notification.style.borderColor = '#10b981';
         notification.style.background = 'rgba(16, 185, 129, 0.1)';
+    } else if (type === 'warning') {
+        notification.style.borderColor = '#f59e0b';
+        notification.style.background = 'rgba(245, 158, 11, 0.1)';
     } else if (type === 'info') {
         notification.style.borderColor = '#3b82f6';
         notification.style.background = 'rgba(59, 130, 246, 0.1)';

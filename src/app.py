@@ -190,6 +190,27 @@ def get_file_hash(filepath):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
+def check_kg_availability(document_id: str) -> bool:
+    """Check if Knowledge Graph exists for a document.
+    
+    Args:
+        document_id: The document identifier
+        
+    Returns:
+        True if KG exists, False otherwise
+    """
+    # Check in DATA_DIR (legacy file-based storage)
+    kg_path_data = os.path.join(DATA_DIR, 'documents', document_id, 'knowledge_graph', 'knowledge_graph.json')
+    if os.path.exists(kg_path_data):
+        return True
+    
+    # Check in DOCUMENTS_FOLDER (new storage location)
+    kg_path_docs = os.path.join(DOCUMENTS_FOLDER, document_id, 'knowledge_graph', 'knowledge_graph.json')
+    if os.path.exists(kg_path_docs):
+        return True
+    
+    return False
+
 def load_documents_index():
     """Load documents from database."""
     try:
@@ -508,9 +529,14 @@ def simple():
 
 @app.route('/api/documents', methods=['GET'])
 def list_documents():
-    """Get all documents from database."""
+    """Get all documents from database with KG availability status."""
     try:
         documents = DocumentRepository.get_all()
+        
+        # Add has_kg field to each document
+        for doc in documents:
+            doc['has_kg'] = check_kg_availability(doc['document_id'])
+        
         return jsonify({'documents': documents})
     except Exception as e:
         print(f"Error listing documents: {e}")
@@ -676,6 +702,7 @@ def ask_question():
     
     def generate():
         global rag_instances
+        nonlocal rag_mode  # Allow reassignment of rag_mode for fallback
         
         try:
             doc_folder = os.path.join(app.config['DOCUMENTS_FOLDER'], document_id)
@@ -721,15 +748,28 @@ def ask_question():
                     print(f"✅ Initialized VectorRAG for: {document_id}", flush=True)
 
             # Initialize KG RAG if needed (only if not already initialized for this document)
-            if rag_instances['kg_rag'] is None and rag_mode in ['kg', 'auto', 'hybrid']:
+            kg_available = check_kg_availability(document_id)
+            original_rag_mode = rag_mode  # Remember original mode for logging
+            
+            if rag_mode in ['kg', 'auto', 'hybrid'] and not kg_available:
+                # Graceful fallback: KG not available, switch to vector mode
+                print(f"⚠️ KG not available for {document_id}, falling back to Vector mode", flush=True)
+                yield json.dumps({"type": "warning", "msg": "Knowledge Graph not available for this document. Using Vector search instead."}) + "\n"
+                rag_mode = 'vector'
+            
+            if rag_instances['kg_rag'] is None and rag_mode in ['kg', 'auto', 'hybrid'] and kg_available:
                  yield json.dumps({"type": "status", "msg": "Initializing Knowledge Graph..."}) + "\n"
-                 kg_path = os.path.join(doc_folder, 'knowledge_graph', 'knowledge_graph.json')
+                 
+                 # Try DATA_DIR first (legacy), then DOCUMENTS_FOLDER
+                 kg_path = os.path.join(DATA_DIR, 'documents', document_id, 'knowledge_graph', 'knowledge_graph.json')
+                 kg_folder = os.path.join(DATA_DIR, 'documents', document_id, 'knowledge_graph')
                  if not os.path.exists(kg_path):
-                     yield json.dumps({"type": "error", "msg": "Knowledge Graph not found"}) + "\n"
-                     return
+                     kg_path = os.path.join(doc_folder, 'knowledge_graph', 'knowledge_graph.json')
+                     kg_folder = os.path.join(doc_folder, 'knowledge_graph')
                  
                  # Load entity map
-                 with open(os.path.join(doc_folder, 'knowledge_graph', 'entities_enriched.json'), 'r') as f:
+                 entities_path = os.path.join(kg_folder, 'entities_enriched.json')
+                 with open(entities_path, 'r') as f:
                     entities = json.load(f)
                     entity_map = {e['name'].lower(): e for e in entities}
                  
@@ -737,8 +777,8 @@ def ask_question():
                  rag_instances['kg_rag'] = KnowledgeGraphRAG(graph_store, entity_map)
                  print(f"✅ Initialized KnowledgeGraphRAG for: {document_id}", flush=True)
             
-            # Initialize Hybrid RAG (only if not already initialized for this document)
-            if rag_instances['hybrid_rag'] is None and rag_mode in ['auto', 'hybrid']:
+            # Initialize Hybrid RAG (only if KG is available and mode requires it)
+            if rag_instances['hybrid_rag'] is None and rag_mode in ['auto', 'hybrid'] and kg_available:
                 # Ensure components are available
                 if rag_instances['kg_rag'] is None or rag_instances['vector_rag'] is None:
                      yield json.dumps({"type": "error", "msg": "Hybrid mode requires both KG and Vector RAG"}) + "\n"
