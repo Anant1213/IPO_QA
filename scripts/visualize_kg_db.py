@@ -90,72 +90,144 @@ def get_kg_data(document_id: str):
 def create_visualization(data: dict, output_file: str, title: str = "Knowledge Graph"):
     """Create interactive PyVis visualization"""
     
-    # Create network
+    # Create network - NO heading for cleaner look
     net = Network(
-        height="900px",
+        height="100vh",
         width="100%",
-        bgcolor="#0a0a0a",
-        font_color="white",
+        bgcolor="#0d1117",  # GitHub dark theme
+        font_color="#e6edf3",
         directed=True,
-        heading=title
+        heading=""  # Remove heading
     )
     
-    # Configure physics
+    # Enhanced physics for better interactivity
     net.set_options("""
     {
       "physics": {
         "forceAtlas2Based": {
-          "gravitationalConstant": -100,
-          "centralGravity": 0.005,
-          "springLength": 230,
-          "springConstant": 0.08,
-          "damping": 0.4
+          "gravitationalConstant": -80,
+          "centralGravity": 0.008,
+          "springLength": 180,
+          "springConstant": 0.06,
+          "damping": 0.5,
+          "avoidOverlap": 0.5
         },
-        "maxVelocity": 50,
+        "maxVelocity": 40,
         "solver": "forceAtlas2Based",
-        "timestep": 0.35,
-        "stabilization": {"iterations": 200}
+        "timestep": 0.4,
+        "stabilization": {
+          "enabled": true,
+          "iterations": 300,
+          "updateInterval": 25
+        }
       },
       "nodes": {
-        "font": {"size": 16, "color": "white", "face": "arial"},
-        "borderWidth": 2
+        "font": {
+          "size": 14,
+          "color": "#e6edf3",
+          "face": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+          "strokeWidth": 2,
+          "strokeColor": "#0d1117"
+        },
+        "borderWidth": 2,
+        "borderWidthSelected": 4,
+        "shadow": {
+          "enabled": true,
+          "color": "rgba(0,0,0,0.3)",
+          "size": 10,
+          "x": 3,
+          "y": 3
+        }
       },
       "edges": {
-        "arrows": {"to": {"enabled": true, "scaleFactor": 0.7}},
-        "smooth": {"type": "continuous"},
-        "font": {"size": 11, "color": "#888888", "align": "middle"}
+        "arrows": {
+          "to": {
+            "enabled": true,
+            "scaleFactor": 0.6,
+            "type": "arrow"
+          }
+        },
+        "smooth": {
+          "type": "curvedCW",
+          "roundness": 0.15
+        },
+        "font": {
+          "size": 10,
+          "color": "#8b949e",
+          "align": "middle",
+          "background": "#0d1117"
+        },
+        "color": {
+          "inherit": false,
+          "opacity": 0.8
+        },
+        "width": 1.5,
+        "selectionWidth": 3,
+        "hoverWidth": 2.5
       },
       "interaction": {
         "hover": true,
-        "tooltipDelay": 100
+        "hoverConnectedEdges": true,
+        "multiselect": true,
+        "navigationButtons": true,
+        "keyboard": {
+          "enabled": true,
+          "bindToWindow": true
+        },
+        "tooltipDelay": 100,
+        "zoomView": true,
+        "dragView": true
       }
     }
     """)
     
-    # Entity type colors
+    # Premium entity type colors - vibrant modern palette
     type_colors = {
-        'PERSON': '#e74c3c',           # Red
-        'COMPANY': '#3498db',          # Blue
-        'ORGANIZATION': '#9b59b6',     # Purple
-        'SUBSIDIARY': '#2980b9',       # Darker blue
-        'FINANCIAL_METRIC': '#2ecc71', # Green
-        'PERCENTAGE': '#27ae60',       # Dark green
-        'MONEY': '#f1c40f',            # Yellow
-        'CURRENCY': '#f1c40f',         # Yellow
-        'NUMBER': '#16a085',           # Teal
-        'DATE': '#e67e22',             # Orange
-        'LOCATION': '#1abc9c',         # Teal
-        'PRODUCT': '#34495e',          # Dark gray
-        'SERVICE': '#5d6d7e',          # Gray blue
-        'REGULATION': '#8e44ad',       # Dark purple
-        'ROLE': '#d35400',             # Dark orange
-        'EVENT': '#c0392b',            # Dark red
-        'DOCUMENT': '#7f8c8d',         # Gray
-        'REGULATORY_BODY': '#8e44ad',  # Purple
-        'MARKET_SEGMENT': '#f39c12',   # Orange
+        'PERSON': '#f97583',           # Soft red/pink
+        'COMPANY': '#79c0ff',          # Bright blue
+        'ORGANIZATION': '#d2a8ff',     # Light purple
+        'SUBSIDIARY': '#58a6ff',       # Electric blue
+        'REGULATOR': '#ff7b72',        # Coral red
+        'UNKNOWN': '#8b949e',          # Gray
+        'FINANCIAL_METRIC': '#7ee787', # Bright green
+        'PERCENTAGE': '#56d364',       # Green
+        'MONEY': '#e3b341',            # Gold
+        'CURRENCY': '#e3b341',         # Gold
+        'NUMBER': '#39d353',           # Green
+        'DATE': '#f0883e',             # Orange
+        'LOCATION': '#3fb950',         # Green
+        'COUNTRY': '#3fb950',          # Green
+        'PRODUCT': '#a5d6ff',          # Light blue
+        'SERVICE': '#a5d6ff',          # Light blue
+        'REGULATION': '#bc8cff',       # Purple
+        'LEGISLATION': '#bc8cff',      # Purple
+        'ROLE': '#ffa657',             # Orange
+        'EVENT': '#ff7b72',            # Coral
+        'DOCUMENT': '#8b949e',         # Gray
+        'STANDARD': '#8b949e',         # Gray
+        'CONCEPT': '#c9d1d9',          # Light gray
     }
     
-    # Add entity nodes
+    # First pass: collect relationships for each entity
+    entity_relationships = {}
+    for claim in data['claims']:
+        subj_id = claim.get('subject_entity_id')
+        obj_id = claim.get('object_entity_id')
+        pred = claim.get('predicate', '')
+        obj_name = claim.get('object_name') or claim.get('object_value', '')
+        subj_name = claim.get('subject_name', '')
+        
+        if subj_id:
+            if subj_id not in entity_relationships:
+                entity_relationships[subj_id] = {'outgoing': [], 'incoming': []}
+            entity_relationships[subj_id]['outgoing'].append(f"{pred} → {obj_name}")
+        
+        if obj_id:
+            if obj_id not in entity_relationships:
+                entity_relationships[obj_id] = {'outgoing': [], 'incoming': []}
+            entity_relationships[obj_id]['incoming'].append(f"{subj_name} → {pred}")
+    
+    # Add entity nodes with rich tooltips
     entity_map = {}  # id -> name
     for entity in data['entities']:
         entity_id = entity['id']
@@ -165,23 +237,60 @@ def create_visualization(data: dict, output_file: str, title: str = "Knowledge G
         
         entity_map[entity_id] = name
         
-        color = type_colors.get(entity_type, '#95a5a6')
+        color = type_colors.get(entity_type, '#8b949e')
         
-        # Build tooltip
-        tooltip = f"<b>{name}</b><br>Type: {entity_type}"
+        # Build rich HTML tooltip
+        tooltip = f"""
+        <div style='font-family: Inter, sans-serif; padding: 8px; max-width: 300px;'>
+            <div style='font-size: 16px; font-weight: bold; color: {color}; margin-bottom: 8px;'>
+                {name}
+            </div>
+            <div style='font-size: 12px; color: #8b949e; margin-bottom: 8px;'>
+                Type: <span style='color: {color};'>{entity_type}</span>
+            </div>
+        """
+        
         if attributes:
-            tooltip += "<br><br><b>Attributes:</b>"
-            for k, v in list(attributes.items())[:5]:  # Limit attributes
-                tooltip += f"<br>• {k}: {v}"
+            tooltip += "<div style='margin-top: 8px; border-top: 1px solid #30363d; padding-top: 8px;'>"
+            tooltip += "<div style='font-size: 11px; color: #58a6ff; margin-bottom: 4px;'>📋 ATTRIBUTES</div>"
+            for k, v in list(attributes.items())[:5]:
+                tooltip += f"<div style='font-size: 11px; color: #c9d1d9;'>• {k}: {v}</div>"
+            tooltip += "</div>"
+        
+        # Add relationships to tooltip
+        rels = entity_relationships.get(entity_id, {'outgoing': [], 'incoming': []})
+        if rels['outgoing']:
+            tooltip += "<div style='margin-top: 8px; border-top: 1px solid #30363d; padding-top: 8px;'>"
+            tooltip += "<div style='font-size: 11px; color: #7ee787; margin-bottom: 4px;'>🔗 RELATIONSHIPS (Outgoing)</div>"
+            for rel in rels['outgoing'][:5]:
+                tooltip += f"<div style='font-size: 10px; color: #c9d1d9;'>→ {rel}</div>"
+            if len(rels['outgoing']) > 5:
+                tooltip += f"<div style='font-size: 10px; color: #8b949e;'>... and {len(rels['outgoing'])-5} more</div>"
+            tooltip += "</div>"
+        
+        if rels['incoming']:
+            tooltip += "<div style='margin-top: 8px; border-top: 1px solid #30363d; padding-top: 8px;'>"
+            tooltip += "<div style='font-size: 11px; color: #f97583; margin-bottom: 4px;'>🔗 RELATIONSHIPS (Incoming)</div>"
+            for rel in rels['incoming'][:5]:
+                tooltip += f"<div style='font-size: 10px; color: #c9d1d9;'>← {rel}</div>"
+            if len(rels['incoming']) > 5:
+                tooltip += f"<div style='font-size: 10px; color: #8b949e;'>... and {len(rels['incoming'])-5} more</div>"
+            tooltip += "</div>"
+        
+        tooltip += "</div>"
+        
+        # Determine node size based on connections
+        num_connections = len(rels['outgoing']) + len(rels['incoming'])
+        node_size = min(35, 18 + num_connections * 2)
         
         net.add_node(
             entity_id,
             label=name[:25] + "..." if len(name) > 25 else name,
             title=tooltip,
             color=color,
-            size=25,
+            size=node_size,
             shape='dot',
-            borderWidthSelected=3
+            borderWidthSelected=4
         )
     
     # Add edges from claims

@@ -78,7 +78,7 @@ from utils.answer_formatter import AnswerFormatter
 from utils.deepseek_client import DeepSeekClient
 
 # Database repositories
-from database.repositories import DocumentRepository, ChunkRepository, EmbeddingRepository
+from database.repositories import DocumentRepository, ChunkRepository, EmbeddingRepository, KGRepository
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -199,6 +199,19 @@ def check_kg_availability(document_id: str) -> bool:
     Returns:
         True if KG exists, False otherwise
     """
+    # Check in DATABASE first (new preferred method)
+    doc_id_int = KGRepository.get_document_id(document_id)
+    if doc_id_int:
+        from sqlalchemy import text
+        from database.connection import engine
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT COUNT(*) FROM kg_entities WHERE document_id = :doc_id
+            """), {"doc_id": doc_id_int})
+            count = result.scalar()
+            if count and count > 0:
+                return True
+    
     # Check in DATA_DIR (legacy file-based storage)
     kg_path_data = os.path.join(DATA_DIR, 'documents', document_id, 'knowledge_graph', 'knowledge_graph.json')
     if os.path.exists(kg_path_data):
@@ -210,6 +223,22 @@ def check_kg_availability(document_id: str) -> bool:
         return True
     
     return False
+
+
+def check_database_kg_available(document_id: str) -> bool:
+    """Check if Database-backed KG is available (preferred over JSON)."""
+    doc_id_int = KGRepository.get_document_id(document_id)
+    if not doc_id_int:
+        return False
+    
+    from sqlalchemy import text
+    from database.connection import engine
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT COUNT(*) FROM kg_entities WHERE document_id = :doc_id
+        """), {"doc_id": doc_id_int})
+        count = result.scalar()
+        return count and count > 0
 
 def load_documents_index():
     """Load documents from database."""
@@ -519,6 +548,130 @@ Answer:"""
         return self.formatter.format(output, question)
 
 
+class DatabaseKGRAG:
+    """
+    Database-backed KG-RAG using PostgreSQL kg_entities and claims tables.
+    Provides entity extraction, lookup, and multi-hop traversal.
+    """
+    
+    def __init__(self, document_id: str):
+        self.document_id = document_id
+        self.doc_id_int = KGRepository.get_document_id(document_id)
+        self.client = DeepSeekClient()
+        self.formatter = AnswerFormatter()
+        print(f"DatabaseKGRAG initialized for document: {document_id} (ID: {self.doc_id_int})")
+    
+    def extract_entities_from_question(self, question: str) -> list:
+        """Extract potential entity names from the question"""
+        # Common stopwords to filter out
+        stopwords = {'who', 'what', 'where', 'when', 'why', 'how', 'is', 'are', 'was', 'were',
+                     'the', 'a', 'an', 'of', 'to', 'in', 'for', 'on', 'with', 'at', 'by', 'from',
+                     'and', 'or', 'but', 'not', 'all', 'any', 'this', 'that', 'these', 'those',
+                     'company', 'person', 'entity', 'owns', 'owned', 'ceo', 'founder', 'director'}
+        
+        # Clean and tokenize
+        words = question.lower().replace('?', '').replace('.', '').replace(',', '').split()
+        
+        # Filter out stopwords and short words
+        entity_candidates = [w for w in words if w not in stopwords and len(w) > 2]
+        
+        # Also look for capitalized words in original question (proper nouns)
+        for word in question.split():
+            if word[0].isupper() and word.lower() not in stopwords and len(word) > 2:
+                entity_candidates.append(word.lower())
+        
+        # Look for known entity patterns
+        patterns = ['policybazaar', 'pb fintech', 'paisabazaar', 'sebi', 'yashish', 'dahiya', 'alok', 'bansal']
+        for pattern in patterns:
+            if pattern in question.lower():
+                entity_candidates.append(pattern)
+        
+        return list(set(entity_candidates))
+    
+    def retrieve_kg_context(self, question: str) -> str:
+        """Retrieve KG context for a question"""
+        if not self.doc_id_int:
+            return ""
+        
+        # Extract potential entities from question
+        search_terms = self.extract_entities_from_question(question)
+        
+        # Get KG context
+        context = KGRepository.get_kg_context_for_question(
+            self.doc_id_int, 
+            search_terms
+        )
+        
+        return context
+    
+    def query(self, question: str) -> str:
+        """Answer question using KG context only"""
+        kg_context = self.retrieve_kg_context(question)
+        
+        if not kg_context:
+            return "No relevant information found in Knowledge Graph."
+        
+        prompt = f"""Based on the Knowledge Graph relationships below, answer the question.
+
+{kg_context}
+
+Question: {question}
+
+Answer based ONLY on the facts shown above. Be specific and cite the relationships."""
+        
+        output = self.client.query(prompt, "")
+        return self.formatter.format(output, question)
+
+
+class HybridDatabaseRAG:
+    """
+    Hybrid RAG combining VectorRAG and DatabaseKGRAG.
+    Uses BOTH vector similarity search AND knowledge graph traversal.
+    """
+    
+    def __init__(self, document_id: str, doc_folder: str = None):
+        self.document_id = document_id
+        self.vector_rag = VectorRAG(doc_folder, document_id)
+        self.kg_rag = DatabaseKGRAG(document_id)
+        self.client = DeepSeekClient()
+        self.formatter = AnswerFormatter()
+        print(f"HybridDatabaseRAG initialized for: {document_id}")
+    
+    def query(self, question: str, top_k: int = 5) -> str:
+        """
+        Answer question using BOTH vector search and KG traversal.
+        Combines both contexts for comprehensive answers.
+        """
+        # Get vector context (semantic similarity)
+        vector_context = self.vector_rag.retrieve_context(question, top_k)
+        
+        # Get KG context (structured relationships)
+        kg_context = self.kg_rag.retrieve_kg_context(question)
+        
+        # Combine contexts
+        combined_context = ""
+        
+        if kg_context:
+            combined_context += f"{kg_context}\n\n"
+        
+        if vector_context:
+            combined_context += f"FROM DOCUMENT TEXT:\n{vector_context}"
+        
+        if not combined_context.strip():
+            return "No relevant information found."
+        
+        prompt = f"""Answer the question using the information below. 
+Use BOTH the Knowledge Graph facts AND the document text for a complete answer.
+
+{combined_context}
+
+Question: {question}
+
+Answer:"""
+        
+        output = self.client.query(prompt, "")
+        return self.formatter.format(output, question)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -749,6 +902,7 @@ def ask_question():
 
             # Initialize KG RAG if needed (only if not already initialized for this document)
             kg_available = check_kg_availability(document_id)
+            db_kg_available = check_database_kg_available(document_id)
             original_rag_mode = rag_mode  # Remember original mode for logging
             
             if rag_mode in ['kg', 'auto', 'hybrid'] and not kg_available:
@@ -757,8 +911,25 @@ def ask_question():
                 yield json.dumps({"type": "warning", "msg": "Knowledge Graph not available for this document. Using Vector search instead."}) + "\n"
                 rag_mode = 'vector'
             
-            if rag_instances['kg_rag'] is None and rag_mode in ['kg', 'auto', 'hybrid'] and kg_available:
-                 yield json.dumps({"type": "status", "msg": "Initializing Knowledge Graph..."}) + "\n"
+            # PRIORITY: Use Database KG if available (new HybridDatabaseRAG)
+            if db_kg_available and rag_mode in ['kg', 'auto', 'hybrid']:
+                yield json.dumps({"type": "status", "msg": "Loading Knowledge Graph from database..."}) + "\n"
+                
+                if rag_instances.get('db_hybrid_rag') is None:
+                    rag_instances['db_hybrid_rag'] = HybridDatabaseRAG(document_id, doc_folder)
+                    print(f"✅ Initialized HybridDatabaseRAG for: {document_id}", flush=True)
+                
+                # Use db_hybrid_rag for hybrid/auto modes
+                if rag_mode in ['auto', 'hybrid']:
+                    rag_instances['hybrid_rag'] = rag_instances['db_hybrid_rag']
+                
+                # For kg-only mode, create DatabaseKGRAG instance
+                if rag_mode == 'kg' and rag_instances.get('kg_rag') is None:
+                    rag_instances['kg_rag'] = DatabaseKGRAG(document_id)
+            
+            # FALLBACK: Legacy JSON-based KG
+            elif rag_instances['kg_rag'] is None and rag_mode in ['kg', 'auto', 'hybrid'] and kg_available and not db_kg_available:
+                 yield json.dumps({"type": "status", "msg": "Initializing Knowledge Graph (JSON)..."}) + "\n"
                  
                  # Try DATA_DIR first (legacy), then DOCUMENTS_FOLDER
                  kg_path = os.path.join(DATA_DIR, 'documents', document_id, 'knowledge_graph', 'knowledge_graph.json')
@@ -775,16 +946,13 @@ def ask_question():
                  
                  graph_store = GraphStore.load(kg_path)
                  rag_instances['kg_rag'] = KnowledgeGraphRAG(graph_store, entity_map)
-                 print(f"✅ Initialized KnowledgeGraphRAG for: {document_id}", flush=True)
-            
-            # Initialize Hybrid RAG (only if KG is available and mode requires it)
-            if rag_instances['hybrid_rag'] is None and rag_mode in ['auto', 'hybrid'] and kg_available:
-                # Ensure components are available
-                if rag_instances['kg_rag'] is None or rag_instances['vector_rag'] is None:
-                     yield json.dumps({"type": "error", "msg": "Hybrid mode requires both KG and Vector RAG"}) + "\n"
-                     return
-                rag_instances['hybrid_rag'] = HybridRAG(rag_instances['kg_rag'], rag_instances['vector_rag'])
-                print(f"✅ Initialized HybridRAG for: {document_id}", flush=True)
+                 print(f"✅ Initialized KnowledgeGraphRAG (JSON) for: {document_id}", flush=True)
+                 
+                 # Initialize legacy Hybrid RAG
+                 if rag_instances['hybrid_rag'] is None and rag_mode in ['auto', 'hybrid']:
+                     if rag_instances['kg_rag'] is not None and rag_instances['vector_rag'] is not None:
+                         rag_instances['hybrid_rag'] = HybridRAG(rag_instances['kg_rag'], rag_instances['vector_rag'])
+                         print(f"✅ Initialized HybridRAG (Legacy) for: {document_id}", flush=True)
 
             
             # Execute Query

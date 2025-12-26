@@ -31,42 +31,48 @@ TIMEOUT = 300  # 5 minutes per request
 
 def get_unified_extraction_prompt(chunks_text: str) -> str:
     """Single prompt that extracts all KG elements at once"""
-    return f"""You are extracting structured information from IPO document text.
+    return f"""You are extracting structured information from IPO (Initial Public Offering) document text.
 
 TEXT TO ANALYZE:
 {chunks_text}
 
 Extract ALL of the following in a single JSON response:
 
-1. ENTITIES: People, companies, organizations, regulators, financial metrics
+1. ENTITIES: People, companies, organizations, regulators mentioned
 2. CLAIMS: Relationships between entities (who owns what, who works where, amounts)
-3. DEFINITIONS: Technical/legal terms defined in the text
-4. EVENTS: Important dates and events mentioned
+3. DEFINITIONS: Technical/legal terms that are defined or explained in the text
+4. EVENTS: Important dates and events (IPO, incorporation, allotment, etc.)
 
 Respond with ONLY valid JSON in this exact format:
 {{
   "entities": [
-    {{"name": "Entity Name", "type": "PERSON|COMPANY|REGULATOR|METRIC", "attributes": {{"key": "value"}}}}
+    {{"name": "Yashish Dahiya", "type": "PERSON", "attributes": {{"role": "CEO"}}}},
+    {{"name": "PB Fintech Limited", "type": "COMPANY", "attributes": {{}}}},
+    {{"name": "SEBI", "type": "REGULATOR", "attributes": {{}}}}
   ],
   "claims": [
-    {{"subject": "Entity1", "predicate": "RELATIONSHIP_TYPE", "object": "Entity2 or value"}}
+    {{"subject": "Yashish Dahiya", "predicate": "CEO_OF", "object": "PB Fintech Limited"}},
+    {{"subject": "PB Fintech Limited", "predicate": "OWNS", "object": "Policybazaar"}}
   ],
   "definitions": [
-    {{"term": "Term", "definition": "What it means"}}
+    {{"term": "Red Herring Prospectus", "definition": "A preliminary prospectus filed with SEBI before IPO"}},
+    {{"term": "Book Running Lead Manager", "definition": "Investment bank managing the IPO offering"}}
   ],
   "events": [
-    {{"type": "EVENT_TYPE", "description": "What happened", "date": "YYYY-MM-DD or null"}}
+    {{"type": "INCORPORATION", "description": "PB Fintech was incorporated", "date": "2008-06-04"}},
+    {{"type": "IPO", "description": "Initial Public Offering", "date": null}}
   ]
 }}
 
-Important:
-- Extract ONLY factual information present in the text
-- Use uppercase for entity types and predicates
-- Include shareholding percentages, revenue figures, dates
-- Common predicates: CEO_OF, FOUNDER_OF, OWNS, SUBSIDIARY_OF, WORKS_AT, HAS_REVENUE, LOCATED_IN
+CRITICAL RULES:
+- Entity types MUST be UPPERCASE: PERSON, COMPANY, REGULATOR, ORGANIZATION, COUNTRY, LOCATION
+- Predicates MUST be UPPERCASE with underscores: CEO_OF, FOUNDER_OF, OWNS, SUBSIDIARY_OF, WORKS_AT
+- Extract definitions for terms like: "means", "refers to", "defined as", "shall mean"
+- Always include the FULL entity names in claims (subject and object)
 - If no items found for a category, use empty array []
 
 JSON Response:"""
+
 
 
 async def call_ollama_async(session: aiohttp.ClientSession, prompt: str, batch_id: int) -> Dict:
@@ -194,7 +200,7 @@ def save_to_database(doc_db_id: int, all_results: List[Dict]):
                 if not name:
                     continue
                 
-                entity_type = entity.get("type", "UNKNOWN")
+                entity_type = entity.get("type", "UNKNOWN").upper()  # Normalize to uppercase
                 attributes = json.dumps(entity.get("attributes", {}))
                 normalized = name.lower().replace(" ", "_")[:500]
                 
@@ -216,7 +222,7 @@ def save_to_database(doc_db_id: int, all_results: List[Dict]):
             except Exception as e:
                 pass  # Silently skip duplicates/errors
         
-        # Save claims
+        # Save claims - link to entities
         for claim in parsed.get("claims", []):
             try:
                 subject = claim.get("subject", "").strip()
@@ -226,18 +232,73 @@ def save_to_database(doc_db_id: int, all_results: List[Dict]):
                 if not subject:
                     continue
                 
+                # Lookup or create subject entity
+                subject_id = None
+                subject_norm = subject.lower().replace(" ", "_")[:500]
+                with engine.begin() as conn:
+                    # Try to find existing entity
+                    result = conn.execute(text("""
+                        SELECT id FROM kg_entities 
+                        WHERE document_id = :doc_id AND normalized_key = :norm
+                    """), {"doc_id": doc_db_id, "norm": subject_norm})
+                    row = result.fetchone()
+                    if row:
+                        subject_id = row[0]
+                    else:
+                        # Create new entity
+                        result = conn.execute(text("""
+                            INSERT INTO kg_entities (document_id, canonical_name, entity_type, normalized_key, attributes)
+                            VALUES (:doc_id, :name, 'UNKNOWN', :norm, CAST('{}' AS jsonb))
+                            RETURNING id
+                        """), {"doc_id": doc_db_id, "name": subject[:500], "norm": subject_norm})
+                        row = result.fetchone()
+                        if row:
+                            subject_id = row[0]
+                
+                # Lookup or create object entity if it looks like an entity name
+                object_id = None
+                if obj and isinstance(obj, str) and len(obj) < 200:
+                    # Check if it looks like an entity (has capital letters, not a number)
+                    if any(c.isupper() for c in obj) and not obj.replace('.', '').replace(',', '').isdigit():
+                        obj_norm = obj.lower().replace(" ", "_")[:500]
+                        with engine.begin() as conn:
+                            # Try to find existing entity
+                            result = conn.execute(text("""
+                                SELECT id FROM kg_entities 
+                                WHERE document_id = :doc_id AND normalized_key = :norm
+                            """), {"doc_id": doc_db_id, "norm": obj_norm})
+                            row = result.fetchone()
+                            if row:
+                                object_id = row[0]
+                            else:
+                                # Create new object entity
+                                result = conn.execute(text("""
+                                    INSERT INTO kg_entities (document_id, canonical_name, entity_type, normalized_key, attributes)
+                                    VALUES (:doc_id, :name, 'UNKNOWN', :norm, CAST('{}' AS jsonb))
+                                    ON CONFLICT (document_id, normalized_key) DO NOTHING
+                                    RETURNING id
+                                """), {"doc_id": doc_db_id, "name": obj[:500], "norm": obj_norm})
+                                row = result.fetchone()
+                                if row:
+                                    object_id = row[0]
+                                    entities_count += 1
+                
+                # Insert claim with entity links
                 with engine.begin() as conn:
                     conn.execute(text("""
-                        INSERT INTO claims (document_id, predicate, object_value, datatype)
-                        VALUES (:doc_id, :pred, :obj, 'string')
+                        INSERT INTO claims (document_id, subject_entity_id, predicate, object_entity_id, object_value, datatype)
+                        VALUES (:doc_id, :subj_id, :pred, :obj_id, :obj_val, 'string')
                     """), {
                         "doc_id": doc_db_id,
+                        "subj_id": subject_id,
                         "pred": predicate[:100],
-                        "obj": str(obj)[:1000] if obj else None
+                        "obj_id": object_id,
+                        "obj_val": str(obj)[:1000] if obj else None
                     })
                 claims_count += 1
             except Exception as e:
                 pass
+
         
         # Save definitions
         for defn in parsed.get("definitions", []):
